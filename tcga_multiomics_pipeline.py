@@ -19,6 +19,7 @@ import numpy as np
 from scipy import stats
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 from typing import Tuple, Dict, Optional
 import warnings
 
@@ -52,9 +53,12 @@ class TCGAMultiOmicsPipeline:
         try:
             # Try CSV first
             df = pd.read_csv(filepath)
-        except:
+        except (FileNotFoundError, pd.errors.EmptyDataError, pd.errors.ParserError) as e:
             # Try TSV
-            df = pd.read_csv(filepath, sep='\t')
+            try:
+                df = pd.read_csv(filepath, sep='\t')
+            except Exception as e:
+                raise ValueError(f"Could not read expression data file: {e}")
         
         print(f"Loaded expression data: {df.shape[0]} genes")
         self.expression_data = df
@@ -102,7 +106,7 @@ class TCGAMultiOmicsPipeline:
         # MAF files are typically tab-delimited
         try:
             df = pd.read_csv(filepath, sep='\t', comment='#')
-        except:
+        except (FileNotFoundError, pd.errors.EmptyDataError, pd.errors.ParserError) as e:
             # Try CSV as fallback
             try:
                 df = pd.read_csv(filepath, comment='#')
@@ -367,7 +371,6 @@ class TCGAMultiOmicsPipeline:
             heatmap_data = top_genes[[expression_col, mutation_col]]
         
         # Normalize data for better visualization
-        from sklearn.preprocessing import StandardScaler
         scaler = StandardScaler()
         heatmap_data_normalized = pd.DataFrame(
             scaler.fit_transform(heatmap_data),
